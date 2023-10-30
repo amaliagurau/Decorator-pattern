@@ -1,0 +1,63 @@
+class Repository:
+    def add(self, item):
+        pass
+
+    def read(self, item_id):
+        pass
+
+    def update(self, item):
+        pass
+
+    def delete(self, item_id):
+        pass
+
+class ProductRepository(Repository):
+    def add(self, product):
+        print(f"Added product: {product}")
+
+    def read(self, product_id):
+        print(f"Read product with ID: {product_id}")
+
+    def update(self, product):
+        print(f"Updated product: {product}")
+
+    def delete(self, product_id):
+        print(f"Deleted product with ID: {product_id}")
+
+def logging_decorator(repository):
+    class LoggingRepository(Repository):
+        def __init__(self):
+            self.repository = repository
+
+        def add(self, item):
+            print(f"Before adding item: {item}")
+            self.repository.add(item)
+            print(f"After adding item: {item}")
+
+        def read(self, item_id):
+            print(f"Before reading item with ID: {item_id}")
+            self.repository.read(item_id)
+            print(f"After reading item with ID: {item_id}")
+
+        def update(self, item):
+            print(f"Before updating item: {item}")
+            self.repository.update(item)
+            print(f"After updating item: {item}")
+
+        def delete(self, item_id):
+            print(f"Before deleting item with ID: {item_id}")
+            self.repository.delete(item_id)
+            print(f"After deleting item with ID: {item_id}")
+
+    return LoggingRepository()
+
+if __name__ == "__main__":
+    product_repo = ProductRepository()
+    logged_product_repo = logging_decorator(product_repo)
+
+    product = {"id": 1, "name": "Product A"}
+
+    logged_product_repo.add(product)
+    logged_product_repo.read(1)
+    logged_product_repo.update(product)
+    logged_product_repo.delete(1)
