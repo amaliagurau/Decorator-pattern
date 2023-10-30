@@ -1,0 +1,106 @@
+import java.io.*;
+import java.util.zip.*;
+import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
+
+interface DataSource {
+    String read(String filePath);
+    void write(String filePath, String content);
+}
+
+class FileDataSource implements DataSource {
+    public String read(String filePath) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            StringBuilder content = new StringBuilder();
+            while ((line = reader.readLine()) != null) {
+                content.append(line);
+            }
+            return content.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void write(String filePath, String content) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            writer.write(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class EncryptionDecorator implements DataSource {
+    private DataSource source;
+    private SecretKeySpec secretKey;
+
+    public EncryptionDecorator(DataSource source, String encryptionKey) {
+        this.source = source;
+        this.secretKey = new SecretKeySpec(encryptionKey.getBytes(), "AES");
+    }
+
+    public String read(String filePath) {
+        String content = source.read(filePath);
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, secretKey);
+            byte[] decryptedBytes = cipher.doFinal(content.getBytes());
+            return new String(decryptedBytes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void write(String filePath, String content) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            byte[] encryptedBytes = cipher.doFinal(content.getBytes());
+            source.write(filePath, new String(encryptedBytes));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class CompressionDecorator implements DataSource {
+    private DataSource source;
+
+    public CompressionDecorator(DataSource source) {
+        this.source = source;
+    }
+
+    public String read(String filePath) {
+        String content = source.read(filePath);
+        try {
+            byte[] compressedBytes = content.getBytes();
+            ByteArrayInputStream input = new ByteArrayInputStream(compressedBytes);
+            GZIPInputStream gzipInputStream = new GZIPInputStream(input);
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = gzipInputStream.read(buffer)) > 0) {
+                output.write(buffer, 0, len);
+            }
+            return new String(output.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void write(String filePath, String content) {
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            GZIPOutputStream gzipOutputStream = new GZIPOutputStream(output);
+            gzipOutputStream.write(content.getBytes());
+            gzipOutputStream.close();
+            source.write(filePath, new String(output.toByteArray()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
